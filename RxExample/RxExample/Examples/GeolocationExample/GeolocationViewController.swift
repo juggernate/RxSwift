@@ -13,38 +13,26 @@ import CoreLocation
     import RxCocoa
 #endif
 
-private extension UILabel {
-    var rx_driveCoordinates: AnyObserver<CLLocationCoordinate2D> {
-        return AnyObserver { [weak self] event in
-            guard let _self = self else { return }
-            switch event {
-            case let .Next(location):
-                _self.text = "Lat: \(location.latitude)\nLon: \(location.longitude)"
-            default:
-                break
-            }
-        }
+private extension Reactive where Base: UILabel {
+    var driveCoordinates: AnyObserver<CLLocationCoordinate2D> {
+        return UIBindingObserver(UIElement: base) { label, location in
+            label.text = "Lat: \(location.latitude)\nLon: \(location.longitude)"
+        }.asObserver()
     }
 }
 
-private extension UIView {
-    var rx_driveAuthorization: AnyObserver<Bool> {
-        return AnyObserver { [weak self] event in
-            guard let _self = self else { return }
-            switch event {
-            case let .Next(autorized):
-                if autorized {
-                    _self.hidden = true
-                    _self.superview?.sendSubviewToBack(_self)
-                }
-                else {
-                    _self.hidden = false
-                    _self.superview?.bringSubviewToFront(_self)
-                }
-            default:
-                break
+private extension Reactive where Base: UIView {
+    var driveAuthorization: AnyObserver<Bool> {
+        return UIBindingObserver(UIElement: base) { view, authorized in
+            if authorized {
+                view.isHidden = true
+                view.superview?.sendSubview(toBack:view)
             }
-        }
+            else {
+                view.isHidden = false
+                view.superview?.bringSubview(toFront:view)
+            }
+        }.asObserver()
     }
 }
 
@@ -59,31 +47,30 @@ class GeolocationViewController: ViewController {
         super.viewDidLoad()
         
         let geolocationService = GeolocationService.instance
-        
-        geolocationService.autorized
-            .drive(noGeolocationView.rx_driveAuthorization)
+
+        geolocationService.authorized
+            .drive(noGeolocationView.rx.driveAuthorization)
             .addDisposableTo(disposeBag)
         
         geolocationService.location
-            .drive(label.rx_driveCoordinates)
+            .drive(label.rx.driveCoordinates)
             .addDisposableTo(disposeBag)
-        
-        button.rx_tap
+
+        button.rx.tap
             .bindNext { [weak self] in
                 self?.openAppPreferences()
             }
             .addDisposableTo(disposeBag)
         
-        button2.rx_tap
+        button2.rx.tap
             .bindNext { [weak self] in
                 self?.openAppPreferences()
             }
             .addDisposableTo(disposeBag)
-        
     }
     
     private func openAppPreferences() {
-        UIApplication.sharedApplication().openURL(NSURL(string: UIApplicationOpenSettingsURLString)!)
+        UIApplication.shared.openURL(URL(string: UIApplicationOpenSettingsURLString)!)
     }
 
 }
